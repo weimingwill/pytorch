@@ -137,11 +137,9 @@ struct FunctionalGraphSlicer {
     // relationships. If an output of a functional graph escapes scope
     // or is mutated then we might change semantics of the program if
     // aliasing relationships are changed.
-    // For now, we don't allow any values which are mutated into the functional
-    // graph, and we don't allow any nodes which have outputs that escape scope.
-    // Possible Future Improvements:
-    // - allow inputs to have mutations so long as there are no mutations in the
-    // graph
+    // We don't allow any node in the functional graph to output a value
+    // that escapes scope or is mutated, and we don't allow any mutating nodes
+    // into the graph.
     // - allow functional graphs to have at most one value that can escape scope
     // - allow outputs which alias the wildcard set but do not "re-escape"
     for (Value* v : n->outputs()) {
@@ -159,11 +157,7 @@ struct FunctionalGraphSlicer {
     }
 
     // mutated_values_ already populated with inputs to this node
-    auto inputs = n->inputs();
-    is_functional_node = is_functional_node &&
-        std::all_of(inputs.begin(), inputs.end(), [&](Value* v) {
-                        return !mutated_values_.count(v);
-                      });
+    is_functional_node = is_functional_node && !aliasDb_->writeOccursAtNode(n);
     if (is_functional_node) {
       functional_nodes_.insert(n);
     }
