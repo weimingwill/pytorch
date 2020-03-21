@@ -10,7 +10,8 @@ from torch.testing._internal.common_cuda import TEST_CUDA
 from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg, TORCH_NN_COMMON_TEST_HARNESS, \
   compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
   has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test, \
-  compute_cpp_args_construction_stmts_and_forward_arg_symbols, serialize_arg_dict_as_script_module
+  compute_cpp_args_construction_stmts_and_forward_arg_symbols, serialize_arg_dict_as_script_module, \
+  compute_arg_dict
 from cpp_api_parity import torch_nn_functionals
 
 # yf225 TODO: write better docs here
@@ -139,50 +140,18 @@ def compute_cpp_function_call(test_params_dict, arg_dict, functional_name):
       "`cpp_options_args` or `cpp_function_call` entry must be present in test params dict: {}".format(
         test_params_dict))
 
-
-# yf225 TODO: move to common utils?
 def process_test_params_for_functional(test_params_dict, device, test_instance_class):
   test = test_instance_class(**test_params_dict)
   # yf225 TODO: can we remove the magic number `5` here?
   functional_name = compute_functional_name(test_params_dict)
   functional_variant_name = test.get_name()[5:] + (('_' + device) if device != 'cpu' else '')
-
-  # yf225 TODO: put cpp_arg_symbol_map processing into a common util function!
-  arg_dict = {
-    'input': [],
-    'target': [],
-    'extra_args': [],
-    'other': [],
-  }
-
-  def put_args_into_arg_dict(arg_type, arg_type_prefix, args):
-    for i, arg in enumerate(args):
-      arg_dict[arg_type].append(CppArg(name=arg_type_prefix+str(i), value=arg))
-
-  put_args_into_arg_dict('input', 'i', convert_to_list(test._get_input()))
-  if is_criterion_test(test):
-    put_args_into_arg_dict('target', 't', convert_to_list(test._get_target()))
-  if test.extra_args:
-    put_args_into_arg_dict('extra_args', 'e', convert_to_list(test.extra_args))
-
-  cpp_arg_symbol_map = test_params_dict.get('cpp_arg_symbol_map', {})
-  for arg_name, arg_value in cpp_arg_symbol_map.items():
-    if isinstance(arg_value, str):
-      if arg_value == 'input':
-        arg_dict['other'].append(CppArg(name=arg_name, value=test._get_input()))
-      else:
-        raise RuntimeError("`{}` has unsupported string value: {}".format(arg_name, arg_value))
-    elif isinstance(arg_value, torch.Tensor):
-      arg_dict['other'].append(CppArg(name=arg_name, value=arg_value))
-    else:
-      raise RuntimeError("`{}` has unsupported value: {}".format(arg_name, arg_value))
-
+  
   return TorchNNFunctionalTestParams(
     functional_name=functional_name,
     functional_variant_name=functional_variant_name,
     test_instance=test,
     cpp_function_call=compute_cpp_function_call(test_params_dict, arg_dict, functional_name),
-    arg_dict=arg_dict,
+    arg_dict=compute_arg_dict(test_params_dict),
     has_parity=test_params_dict.get('has_parity', True),
     device=device,
     cpp_tmp_folder=tempfile.mkdtemp(),
