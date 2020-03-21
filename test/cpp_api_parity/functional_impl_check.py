@@ -9,7 +9,8 @@ import torch.testing._internal.common_nn as common_nn
 from torch.testing._internal.common_cuda import TEST_CUDA
 from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg, TORCH_NN_COMMON_TEST_HARNESS, \
   compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
-  has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test
+  has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test, \
+  compute_cpp_args_construction_stmts_and_forward_arg_symbols
 from cpp_api_parity import torch_nn_functionals
 
 # yf225 TODO: write better docs here
