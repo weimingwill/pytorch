@@ -1,6 +1,7 @@
 from collections import namedtuple
 
 import torch
+import torch.testing._internal.common_nn as common_nn
 
 TorchNNModuleTestParams = namedtuple(
     'TorchNNModuleTestParams',
