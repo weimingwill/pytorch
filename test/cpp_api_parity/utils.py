@@ -105,7 +105,7 @@ def is_criterion_test(test_instance):
   return isinstance(test_instance, common_nn.CriterionTest) or \
     isinstance(test_instance, common_nn.NewCriterionTest)
 
-def compute_cpp_args_construction_stmts_and_forward_arg_symbols(arg_dict):
+def compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params):
   cpp_forward_args_symbols = []
 
   def add_cpp_forward_args(args):
