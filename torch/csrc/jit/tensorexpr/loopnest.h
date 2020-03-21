@@ -56,23 +56,6 @@ class TORCH_API LoopNest {
   std::unordered_set<Tensor*> intermediate_tensors_;
 };
 
-// represent a range [start, stop)
-class Range {
- public:
-  Range() {}
-  Range(const Expr* start, const Expr* stop) : start_(start), stop_(stop) {}
-  const Expr* start() const {
-    return start_;
-  }
-  const Expr* stop() const {
-    return stop_;
-  }
-
- private:
-  const Expr* start_;
-  const Expr* stop_;
-};
-
 } // namespace tensorexpr
 } // namespace jit
 } // namespace torch

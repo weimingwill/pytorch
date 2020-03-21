@@ -663,8 +663,7 @@ Stmt* LoopNest::LowerToStmt(Tensor* t) {
   for (size_t i = 0; i < f->ndim(); i++) {
     // Going in reverse order: from innermost loop to the outermost
     size_t dim_index = f->ndim() - i - 1;
-    Range r(new IntImm(0), f->dim(dim_index));
-    body = new For(f->arg(dim_index), r.start(), r.stop(), body);
+    body = new For(f->arg(dim_index), new IntImm(0), f->dim(dim_index), body);
   }
   return body;
 }
@@ -871,6 +870,10 @@ Stmt* LoopNest::getLoopBodyFor(Tensor* t) const {
 bool LoopNest::hasLoopBodyFor(Tensor* t) const {
   return tensor_to_stmt_.count(t) > 0;
 }
+
+
+
+
 
 } // namespace tensorexpr
 } // namespace jit
