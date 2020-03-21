@@ -4,6 +4,7 @@
 #include <torch/csrc/jit/api/compilation_unit.h>
 #include <torch/csrc/jit/mobile/type_parser.h>
 #include <torch/csrc/jit/runtime/instruction.h>
+#include <torch/csrc/jit/serialization/import_export_constants.h>
 #include <torch/csrc/jit/serialization/unpickler.h>
 #include <torch/custom_class.h>
 
@@ -45,14 +46,14 @@ using caffe2::serialize::IStreamAdapter;
 using caffe2::serialize::ReadAdapterInterface;
 
 OpCode parseOpCode(const char *str);
-namespace {
 
-IValue expect_field(IValue tup, const std::string& expected_name, size_t entry){
+IValue expect_field(IValue tup, const std::string& expected_name, size_t entry) {
   auto row = tup.toTuple()->elements().at(entry).toTuple();
   TORCH_INTERNAL_ASSERT(row->elements().at(0).toStringRef() == expected_name, "Expected ", expected_name, " found " , row->elements().at(0).toStringRef());
   return row->elements().at(1);
 }
 
+namespace {
 void print_unsupported_ops_and_throw(const std::unordered_set<std::string>& unsupported_ops) {
   std::string error_message("{");
   for (const auto& op_name : unsupported_ops) {
@@ -73,10 +74,20 @@ void parseMethods(
     auto function = std::unique_ptr<mobile::Function>(
         new mobile::Function(c10::QualifiedName(function_name)));
 
-    const auto& ins_list = expect_field(table, "instructions", 0).toTuple()->elements();
-    const auto& ops_list = expect_field(table, "operators", 1).toTuple()->elements();
-    const auto& consts_list = expect_field(table, "constants", 2).toTuple()->elements();
-    const auto& types_list = expect_field(table, "types", 3).toTuple()->elements();
+    const auto& ins_list =
+        expect_field(table, "instructions", BYTECODE_INDEX_INSTRUCTION)
+            .toTuple()
+            ->elements();
+    const auto& ops_list =
+        expect_field(table, "operators", BYTECODE_INDEX_OPERATOR)
+            .toTuple()
+            ->elements();
+    const auto& consts_list =
+        expect_field(table, "constants", BYTECODE_INDEX_CONSTANT)
+            .toTuple()
+            ->elements();
+    const auto& types_list =
+        expect_field(table, "types", BYTECODE_INDEX_TYPE).toTuple()->elements();
     const auto& register_size = expect_field(table, "register_size", 4).toInt();
 
     for (const auto& ins : ins_list) {
