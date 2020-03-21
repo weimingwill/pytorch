@@ -1,5 +1,7 @@
 from collections import namedtuple
 
+import torch
+
 TorchNNModuleTestParams = namedtuple(
     'TorchNNModuleTestParams',
     [
