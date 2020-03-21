@@ -146,7 +146,7 @@ def serialize_arg_dict_as_script_module(arg_dict):
 
   return torch.jit.script(arg_dict_module)
 
-def compute_arg_dict(test_params_dict):
+def compute_arg_dict(test_params_dict, test_instance):
   arg_dict = {
     'input': [],
     'target': [],
@@ -158,17 +158,17 @@ def compute_arg_dict(test_params_dict):
     for i, arg in enumerate(args):
       arg_dict[arg_type].append(CppArg(name=arg_type_prefix+str(i), value=arg))
 
-  put_args_into_arg_dict('input', 'i', convert_to_list(test._get_input()))
-  if is_criterion_test(test):
-    put_args_into_arg_dict('target', 't', convert_to_list(test._get_target()))
-  if test.extra_args:
-    put_args_into_arg_dict('extra_args', 'e', convert_to_list(test.extra_args))
+  put_args_into_arg_dict('input', 'i', convert_to_list(test_instance._get_input()))
+  if is_criterion_test(test_instance):
+    put_args_into_arg_dict('target', 't', convert_to_list(test_instance._get_target()))
+  if test_instance.extra_args:
+    put_args_into_arg_dict('extra_args', 'e', convert_to_list(test_instance.extra_args))
 
   cpp_arg_symbol_map = test_params_dict.get('cpp_arg_symbol_map', {})
   for arg_name, arg_value in cpp_arg_symbol_map.items():
     if isinstance(arg_value, str):
       if arg_value == 'input':
-        arg_dict['other'].append(CppArg(name=arg_name, value=test._get_input()))
+        arg_dict['other'].append(CppArg(name=arg_name, value=test_instance._get_input()))
       else:
         raise RuntimeError("`{}` has unsupported string value: {}".format(arg_name, arg_value))
     elif isinstance(arg_value, torch.Tensor):
