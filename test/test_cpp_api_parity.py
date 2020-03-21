@@ -15,6 +15,8 @@ from cpp_api_parity import module_impl_check, functional_impl_check, sample_modu
 
 print_cpp_source = True
 
+devices = ['cpu', 'cuda']
+
 # yf225 TODO: need to add proper checks and expectations when people:
 # 1. Add a new test to a module already supported by C++ API (i.e. parity table has entry for it, and the parity bit is yes)
 #   a) add a flag `test_cpp_api_parity` to the dict to be able to turn off test as needed
@@ -111,11 +113,19 @@ for test_params_dicts, test_instance_class in [
   (criterion_tests, common_nn.CriterionTest),
   (new_criterion_tests, common_nn.NewCriterionTest),
 ]:
-  module_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table)
-  functional_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table)
+  module_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table, devices)
+  functional_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table, devices)
 
 module_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
 functional_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
+
+# Assert that there exists auto-generated tests for `SampleModule`.
+assert len([name for name in TestCppApiParity.__dict__ if 'SampleModule' in name]) == \
+  len(sample_module.module_tests) * len(devices)
+
+# Assert that there exists auto-generated tests for `sample_functional`.
+assert len([name for name in TestCppApiParity.__dict__ if 'sample_functional' in name]) == \
+  len(sample_functional.functional_tests) * len(['cpu', 'cuda'])
 
 if __name__ == "__main__":
   common.run_tests()

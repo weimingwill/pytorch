@@ -203,7 +203,7 @@ def process_test_params_for_functional(test_params_dict, device, test_instance_c
 torch_nn_test_params_map = {}
 
 # yf225 TODO: move this to common utils?
-def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, test_params_dicts, test_instance_class):
+def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, test_params_dicts, test_instance_class, devices):
   for test_params_dict in test_params_dicts:
     # Skip all `torch.nn` module tests, since they are handled by another test suite.
     if not 'FunctionalModule' in str(test_params_dict.get('constructor', '')):
@@ -223,7 +223,7 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
 
     has_impl_parity, _ = parity_table['torch::nn::functional'][functional_full_name]
 
-    for device in ['cpu', 'cuda']:
+    for device in devices:
       test_params = process_test_params_for_functional(
         test_params_dict=test_params_dict,
         device=device,
@@ -249,12 +249,13 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
       add_test(unit_test_class, test_name, test_fn)
 
 
-def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_table):
+def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_table, devices):
   add_torch_nn_functional_impl_parity_tests(
     parity_table=parity_table,
     unit_test_class=unit_test_class,
     test_params_dicts=test_params_dicts,
-    test_instance_class=test_instance_class)
+    test_instance_class=test_instance_class,
+    devices=devices)
 
 # yf225 TODO: move to common utils?
 # yf225 TODO: we should check in a copy of the generated source code, and then run consistency test (compare old vs. newly generated)
