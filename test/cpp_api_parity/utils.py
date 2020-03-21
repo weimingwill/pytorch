@@ -4,31 +4,31 @@ import torch
 import torch.testing._internal.common_nn as common_nn
 
 TorchNNModuleTestParams = namedtuple(
-    'TorchNNModuleTestParams',
-    [
-        'module_name',
-        'module_variant_name',
-        'test_instance',
-        'cpp_constructor_args',
-        'arg_dict',
-        'has_parity',
-        'device',
-        'cpp_tmp_folder',
-    ]
+  'TorchNNModuleTestParams',
+  [
+    'module_name',
+    'module_variant_name',
+    'test_instance',
+    'cpp_constructor_args',
+    'arg_dict',
+    'has_parity',
+    'device',
+    'cpp_tmp_folder',
+  ]
 )
 
 TorchNNFunctionalTestParams = namedtuple(
-    'TorchNNFunctionalTestParams',
-    [
-        'functional_name',
-        'functional_variant_name',
-        'test_instance',
-        'cpp_function_call',
-        'arg_dict',
-        'has_parity',
-        'device',
-        'cpp_tmp_folder',
-    ]
+  'TorchNNFunctionalTestParams',
+  [
+    'functional_name',
+    'functional_variant_name',
+    'test_instance',
+    'cpp_function_call',
+    'arg_dict',
+    'has_parity',
+    'device',
+    'cpp_tmp_folder',
+  ]
 )
 
 CppArg = namedtuple('CppArg', ['name', 'value'])
@@ -106,6 +106,7 @@ def is_criterion_test(test_instance):
     isinstance(test_instance, common_nn.NewCriterionTest)
 
 def compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params):
+  device = test_params.device
   cpp_forward_args_symbols = []
 
   def add_cpp_forward_args(args):

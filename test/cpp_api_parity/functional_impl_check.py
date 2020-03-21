@@ -259,8 +259,6 @@ def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_ta
 # yf225 TODO: move to common utils?
 # yf225 TODO: we should check in a copy of the generated source code, and then run consistency test (compare old vs. newly generated)
 def generate_test_cpp_sources(test_params, template):
-  device = test_params.device
-
   cpp_args_construction_stmts, _ = compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params)
 
   test_cpp_sources = template.substitute(
