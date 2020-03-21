@@ -10,7 +10,7 @@ from torch.testing._internal.common_cuda import TEST_CUDA
 from cpp_api_parity.utils import TorchNNModuleTestParams, CppArg, TORCH_NN_COMMON_TEST_HARNESS, \
   compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
   has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test, \
-  compute_cpp_args_construction_stmts_and_forward_arg_symbols
+  compute_cpp_args_construction_stmts_and_forward_arg_symbols, serialize_arg_dict_as_script_module
 from cpp_api_parity import torch_nn_modules
 
 # yf225 TODO: write better docs here
@@ -92,6 +92,8 @@ def run_python_forward_backward(unit_test_class, test_params):
   # To make sure the random tensors created are the same in Python/C++, we need
   # to set the RNG seed manually.
   torch.manual_seed(0)
+
+  # Forward pass
   python_output = module(*inputs)
 
   # NOTE: This is a workaround to allow any module to be traced.
@@ -100,7 +102,9 @@ def run_python_forward_backward(unit_test_class, test_params):
   module.forward = types.MethodType(lambda self, input: input, module)
   script_module = torch.jit.trace(module, torch.tensor(0))
 
+  # Backward pass
   python_output.sum().backward()
+
   # Put all gradients into a dict, to be compared later
   python_grad_dict = {}
   for name, param in module.named_parameters():
@@ -119,19 +123,7 @@ def test_forward_backward(unit_test_class, test_params):
 
   # Save Python module and arguments to be used from C++ function
   script_module.save("{}/{}_module.pt".format(test_params.cpp_tmp_folder, module_variant_name))
-  arg_dict_flat = {
-    arg_name: arg_value \
-      for arg_name, arg_value in \
-        test_params.arg_dict['input'] + \
-        test_params.arg_dict['target'] + \
-        test_params.arg_dict['extra_args'] + \
-        test_params.arg_dict['other']
-  }
-  arg_dict_module = torch.nn.Module()
-  for arg_name, arg_value in arg_dict_flat.items():
-    assert isinstance(arg_value, torch.Tensor)
-    arg_dict_module.register_buffer(arg_name, arg_value)
-  torch.jit.script(arg_dict_module).save("{}/{}_arg_dict.pt".format(test_params.cpp_tmp_folder, module_variant_name))
+  serialize_arg_dict_as_script_module(test_params.arg_dict).save("{}/{}_arg_dict.pt".format(test_params.cpp_tmp_folder, functional_variant_name))
 
   cpp_test_name = '{}_{}'.format(test_params.module_variant_name, 'test_forward_backward')
   cpp_test_fn = getattr(unit_test_class.module_impl_check_cpp_module, cpp_test_name)

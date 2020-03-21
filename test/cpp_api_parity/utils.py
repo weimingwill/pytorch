@@ -129,3 +129,19 @@ def compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params):
   cpp_args_construction_stmts = cpp_forward_input_args_stmts + cpp_forward_target_args_stmts + cpp_forward_extra_args_stmts + cpp_other_args_stmts
 
   return cpp_args_construction_stmts, cpp_forward_args_symbols
+
+def serialize_arg_dict_as_script_module(arg_dict):
+  arg_dict_flat = {
+    arg_name: arg_value \
+      for arg_name, arg_value in \
+        arg_dict['input'] + \
+        arg_dict['target'] + \
+        arg_dict['extra_args'] + \
+        arg_dict['other']
+  }
+  arg_dict_module = torch.nn.Module()
+  for arg_name, arg_value in arg_dict_flat.items():
+    assert isinstance(arg_value, torch.Tensor)
+    arg_dict_module.register_buffer(arg_name, arg_value)
+
+  return torch.jit.script(arg_dict_module)

@@ -116,16 +116,14 @@ for test_params_dicts, test_instance_class in [
   module_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table, devices)
   functional_impl_check.add_tests(TestCppApiParity, test_params_dicts, test_instance_class, parity_table, devices)
 
-module_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
-functional_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
-
-# Assert that there exists auto-generated tests for `SampleModule`.
+# Assert that there exists auto-generated tests for `SampleModule` and `sample_functional`.
 assert len([name for name in TestCppApiParity.__dict__ if 'SampleModule' in name]) == \
   len(sample_module.module_tests) * len(devices)
-
-# Assert that there exists auto-generated tests for `sample_functional`.
 assert len([name for name in TestCppApiParity.__dict__ if 'sample_functional' in name]) == \
   len(sample_functional.functional_tests) * len(['cpu', 'cuda'])
+
+module_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
+functional_impl_check.build_cpp_tests(TestCppApiParity, print_cpp_source=print_cpp_source)
 
 if __name__ == "__main__":
   common.run_tests()
