@@ -7,7 +7,9 @@ import re
 import torch
 import torch.testing._internal.common_nn as common_nn
 from torch.testing._internal.common_cuda import TEST_CUDA
-from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg
+from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg, TORCH_NN_COMMON_TEST_HARNESS, \
+  compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
+  has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test
 from cpp_api_parity import torch_nn_functionals
 
 # yf225 TODO: write better docs here
@@ -20,30 +22,6 @@ from cpp_api_parity import torch_nn_functionals
 
 # NN tests use double as the default dtype
 torch.set_default_dtype(torch.double)
-
-# yf225 TODO: move to common utils?
-devices = ['cpu', 'cuda']
-
-# yf225 TODO: move to common utils?
-TORCH_NN_COMMON_TEST_HARNESS = """
-#include <torch/script.h>
-
-void write_ivalue_to_file(const torch::IValue& ivalue, const std::string& file_path) {
-  auto bytes = torch::jit::pickle_save(ivalue);
-  std::ofstream fout(file_path, std::ios::out | std::ios::binary);
-  fout.write(bytes.data(), bytes.size());
-  fout.close();
-}
-
-c10::Dict<std::string, torch::Tensor> load_dict_from_file(const std::string& file_path) {
-  c10::Dict<std::string, torch::Tensor> arg_dict;
-  auto arg_dict_module = torch::jit::load(file_path);
-  for (const auto& p : arg_dict_module.named_buffers(/*recurse=*/false)) {
-    arg_dict.insert(p.name, p.value);
-  }
-  return arg_dict;
-}
-"""
 
 '''
 Expected substitutions:
@@ -78,30 +56,6 @@ void ${functional_variant_name}_test_forward() {
 }
 """)
 
-# yf225 TODO: move to common utils?
-def compile_cpp_code_inline(name, cpp_sources, functions):
-  cpp_module = torch.utils.cpp_extension.load_inline(
-    name=name,
-    cpp_sources=cpp_sources,
-    functions=functions,
-    verbose=False,
-  )
-  return cpp_module
-
-# yf225 TODO: move to common utils
-def convert_to_list(python_input):
-  if isinstance(python_input, torch.Tensor):
-    return [python_input]
-  else:
-    return [tensor for tensor in python_input]
-
-# yf225 TODO: move to common utils
-def set_python_tensors_requires_grad(python_tensors):
-  return [tensor.requires_grad_(True) if tensor.dtype != torch.long else tensor for tensor in python_tensors]
-
-# yf225 TODO: move to common utils
-def move_python_tensors_to_device(python_tensors, device):
-  return [tensor.to(device) for tensor in python_tensors]
 
 def run_forward(unit_test_class, test_params):
   device = test_params.device
@@ -245,31 +199,6 @@ def process_test_params_for_functional(test_params_dict, device, test_instance_c
     cpp_tmp_folder=tempfile.mkdtemp(),
   )
 
-# yf225 TODO: move to common utils?
-def has_test(unit_test_class, test_name):
-  return hasattr(unit_test_class, test_name)
-
-# yf225 TODO: move to common utils?
-def add_test(unit_test_class, test_name, test_fn):
-  if has_test(unit_test_class, test_name):
-    raise RuntimeError("Found two tests with the same name: " + test_name)
-  setattr(unit_test_class, test_name, test_fn)
-
-# yf225 TODO: move to common utils?
-def set_cpp_tensors_requires_grad(cpp_tensor_stmts, cpp_tensors):
-  assert len(cpp_tensor_stmts) == len(cpp_tensors)
-  return ['{}.requires_grad_(true)'.format(tensor_stmt) if tensor.dtype != torch.long else tensor_stmt \
-    for tensor_stmt, (_, tensor) in zip(cpp_tensor_stmts, cpp_tensors)]
-
-# yf225 TODO: move to common utils
-def move_cpp_tensors_to_device(cpp_tensor_stmts, device):
-  return ['{}.to("{}")'.format(tensor_stmt, device) for tensor_stmt in cpp_tensor_stmts]
-
-def is_criterion_test(test_instance):
-  return isinstance(test_instance, common_nn.CriterionTest) or \
-    isinstance(test_instance, common_nn.NewCriterionTest)
-
-
 torch_nn_test_params_map = {}
 
 # yf225 TODO: move this to common utils?
@@ -293,7 +222,7 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
 
     has_impl_parity, _ = parity_table['torch::nn::functional'][functional_full_name]
 
-    for device in devices:
+    for device in ['cpu', 'cuda']:
       test_params = process_test_params_for_functional(
         test_params_dict=test_params_dict,
         device=device,
@@ -331,24 +260,7 @@ def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_ta
 def generate_test_cpp_sources(test_params, template):
   device = test_params.device
 
-  # yf225 TODO: move to common utils!
-  def add_cpp_forward_args(args):
-    args_stmts = []
-    for arg_name, _ in args:
-      args_stmts.append('auto {} = arg_dict.at("{}")'.format(arg_name, arg_name))
-    return args_stmts
-
-  cpp_forward_input_args_stmts = move_cpp_tensors_to_device(set_cpp_tensors_requires_grad(add_cpp_forward_args(test_params.arg_dict['input']), test_params.arg_dict['input']), device)
-  cpp_forward_target_args_stmts = move_cpp_tensors_to_device(add_cpp_forward_args(test_params.arg_dict['target']), device)
-  cpp_forward_extra_args_stmts = move_cpp_tensors_to_device(add_cpp_forward_args(test_params.arg_dict['extra_args']), device)
-
-  # Build the list of other arguments needed
-  cpp_other_args_stmts = []
-  for arg_name, _ in test_params.arg_dict['other']:
-    cpp_other_args_stmts.append('auto {} = arg_dict.at("{}")'.format(arg_name, arg_name))
-  cpp_other_args_stmts = move_cpp_tensors_to_device(cpp_other_args_stmts, device)
-  
-  cpp_args_construction_stmts = cpp_forward_input_args_stmts + cpp_forward_target_args_stmts + cpp_forward_extra_args_stmts + cpp_other_args_stmts
+  cpp_args_construction_stmts, _ = compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params)
 
   test_cpp_sources = template.substitute(
     functional_variant_name=test_params.functional_variant_name,
