@@ -14,7 +14,7 @@ from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg, TORCH_NN_C
   compute_arg_dict, skip_test_fn_if_needed
 from cpp_api_parity import torch_nn_functionals
 
-# yf225 TODO: write better docs here
+# yf225 TODO: write better high-level docs here
 
 # Step 1: Translate ctor args from Python layer to C++ layer
 # Step 2: Construct a C++ layer, run forward and backward on it, save all its params/buffers/gradients into a ScriptModule
@@ -55,7 +55,6 @@ void ${functional_variant_name}_test_forward() {
     "${cpp_tmp_folder}/${functional_variant_name}_forward_output.pt");
 }
 """)
-
 
 def run_forward(unit_test_class, test_params):
   device = test_params.device

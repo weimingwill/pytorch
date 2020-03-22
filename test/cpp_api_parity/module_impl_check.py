@@ -14,7 +14,7 @@ from cpp_api_parity.utils import TorchNNModuleTestParams, CppArg, TORCH_NN_COMMO
   compute_arg_dict, skip_test_fn_if_needed
 from cpp_api_parity import torch_nn_modules
 
-# yf225 TODO: write better docs here
+# yf225 TODO: write better high-level docs here
 # Module implementation correctness check:
 
 # Step 1: Translate ctor args from Python layer to C++ layer
@@ -244,7 +244,6 @@ def add_torch_nn_module_impl_parity_tests(parity_table, unit_test_class, test_pa
         has_impl_parity=has_impl_parity,
         device=device)
       add_test(unit_test_class, test_name, test_fn)
-
 
 def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_table, devices):
   add_torch_nn_module_impl_parity_tests(
