@@ -203,7 +203,7 @@ def compute_arg_dict(test_params_dict, test_instance):
 
   return arg_dict
 
-def skip_test_fn_if_needed(test_fn, test_params_dict, test_cuda, has_impl_parity):
+def skip_test_fn_if_needed(test_fn, test_params_dict, test_cuda, has_impl_parity, device):
   test_fn = unittest.skipIf(not test_params_dict.get('test_cpp_api_parity', True), "Excluded from C++ API parity tests")(test_fn)
 
   if device == 'cuda':

@@ -192,7 +192,8 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
         test_fn=test_fn,
         test_params_dict=test_params_dict,
         test_cuda=TEST_CUDA,
-        has_impl_parity=has_impl_parity)
+        has_impl_parity=has_impl_parity,
+        device=device)
       add_test(unit_test_class, test_name, test_fn)
 
 
