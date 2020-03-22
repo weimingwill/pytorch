@@ -188,7 +188,7 @@ def process_test_params_for_module(test_params_dict, device, test_instance_class
   if 'constructor_args' in test_params_dict:
     assert 'cpp_constructor_args' in test_params_dict, \
       "If `constructor_args` is present in test params dict, `cpp_constructor_args` must be present: {}".format(
-        test_params_dict))
+        test_params_dict)
 
   return TorchNNModuleTestParams(
     module_name=module_name,
