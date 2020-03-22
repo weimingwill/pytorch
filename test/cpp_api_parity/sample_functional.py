@@ -58,6 +58,13 @@ functional_tests = [
         fullname='sample_functional_no_parity',
         has_parity=False,
     ),
+    dict(
+        constructor=wrap_functional(F.sample_functional, has_parity=False),
+        cpp_options_args='F::SampleFunctionalFuncOptions(false)',
+        input_size=(1, 2, 3),
+        fullname='sample_functional_skipped',
+        test_cpp_api_parity=True,
+    ),
 ]
 
 torch_nn_functionals.functional_metadata_map['sample_functional'] = torch_nn_functionals.TorchNNFunctionalMetadata(

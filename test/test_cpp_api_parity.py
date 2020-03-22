@@ -1,3 +1,23 @@
+# What should I do when C++ API parity test is failing?
+#
+# - If you are changing the implementation of an existing `torch.nn` module / functional:
+# Answer: Ideally you should also change the C++ API implementation for that module / functional
+# (you can start by searching for the module / functional name in `torch/csrc/api/` folder).
+#
+# - If you are adding a new test params dict for an existing `torch.nn` module / functional:
+# Answer: Ideally you should fix the C++ API implementation for that module / functional
+# to exactly match the Python API implementation (you can start by searching for the module /
+# functional name in `torch/csrc/api/` folder).
+#
+# - If you are adding a test params dict for a *new* `torch.nn` module / functional:
+# Answer: Ideally you should add the corresponding C++ API implementation for that module / functional,
+# and it should exactly match the Python API implementation. (We have done a large effort on this
+# which is tracked at https://github.com/pytorch/pytorch/issues/25883.)
+#
+# However, if any of the above is proven to be too complicated, you can just add
+# `test_cpp_api_parity=False` to any failing test params dict in `torch/testing/_internal/common_nn.py`,
+# and the C++ API parity test for that test params dict will be skipped accordingly.
+
 import os
 
 import torch.testing._internal.common_utils as common
@@ -9,21 +29,12 @@ print_cpp_source = True
 
 devices = ['cpu', 'cuda']
 
-# yf225 TODO: need to add proper checks and expectations when people:
-# 1. Add a new test to a module already supported by C++ API (i.e. parity table has entry for it, and the parity bit is yes)
-#   a) add a flag `test_cpp_api_parity` to the dict to be able to turn off test as needed
-# 2. Add a new test for a module that is not supported by C++ API yet
-
-class TestCppApiParity(common.TestCase):
-  pass
-
 parity_table_path = os.path.join(os.path.dirname(__file__), 'cpp_api_parity/parity-tracker.md')
 
 parity_table = parse_parity_tracker_table(parity_table_path)
 
-# yf225 TODO comment:
-# RHS value format: 'input' / 'target' / 'extra_args_0' / 'extra_args_1'
-# NOTE: any var symbol written in the cpp_* fields needs to have a mapping here!
+class TestCppApiParity(common.TestCase):
+  pass
 
 for test_params_dicts, test_instance_class in [
   (sample_module.module_tests, common_nn.ModuleTest),

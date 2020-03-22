@@ -146,6 +146,30 @@ def serialize_arg_dict_as_script_module(arg_dict):
 
   return torch.jit.script(arg_dict_module)
 
+# NOTE: any argument symbol used in `cpp_constructor_args` / `cpp_options_args` / `cpp_function_call`
+# must have a mapping in `cpp_arg_symbol_map`.
+#
+# The mapping can take one of the following formats:
+#
+# 1. `argument_name` -> Python value
+# 2. `argument_name` -> 'input' (which means `argument_name` in C++ will be bound to `test_instance._get_input()`)
+#
+# For example:
+# ```
+# def bceloss_weights_no_reduce_test():
+#     t = torch.randn(15, 10).gt(0).double()
+#     weights = torch.rand(10)
+#     return dict(
+#         fullname='BCELoss_weights_no_reduce',
+#         constructor=wrap_functional(
+#             lambda i: F.binary_cross_entropy(i, t.type_as(i),
+#                                              weight=weights.type_as(i), reduction='none')),
+#         cpp_function_call='F::binary_cross_entropy(i, t.to(i.options()), F::BinaryCrossEntropyFuncOptions().weight(weights.to(i.options())).reduction(torch::kNone))',
+#         input_fn=lambda: torch.rand(15, 10).clamp_(2.8e-2, 1 - 2.8e-2),
+#         cpp_arg_symbol_map={'i': 'input', 't': t, 'weights': weights},
+#         reference_fn=lambda i, p, m: -(t * i.log() + (1 - t) * (1 - i).log()) * weights,
+#     )
+# ```
 def compute_arg_dict(test_params_dict, test_instance):
   arg_dict = {
     'input': [],
