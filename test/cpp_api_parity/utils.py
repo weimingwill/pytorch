@@ -2,6 +2,7 @@ from collections import namedtuple
 import unittest
 
 import torch
+import torch.utils.cpp_extension
 import torch.testing._internal.common_nn as common_nn
 
 TorchNNModuleTestParams = namedtuple(
