@@ -92,7 +92,7 @@ module_tests = [
         has_parity=False,
     ),
     dict(
-        fullname='SampleModule_skipped',
+        fullname='SampleModule_should_be_skipped',
         constructor=lambda: SampleModule(False, True),
         cpp_constructor_args='torch::nn::SampleModuleOptions(false, true)',
         input_size=(3, 4),
