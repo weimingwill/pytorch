@@ -177,3 +177,15 @@ def compute_arg_dict(test_params_dict, test_instance):
       raise RuntimeError("`{}` has unsupported value: {}".format(arg_name, arg_value))
 
   return arg_dict
+
+def skip_test_fn_if_needed(test_fn, test_params_dict, test_cuda, has_impl_parity):
+  test_fn = unittest.skipIf(not test_params_dict.get('test_cpp_api_parity', True), "Excluded from C++ API parity tests")(test_fn)
+
+  if device == 'cuda':
+    test_fn = unittest.skipIf(not TEST_CUDA, "CUDA unavailable")(test_fn)
+    test_fn = unittest.skipIf(not test_params_dict.get('test_cuda', True), "Excluded from CUDA tests")(test_fn)
+
+  # If `Implementation Parity` entry in parity table for this module is `No`,
+  # we mark the test as expected failure.
+  if not has_impl_parity:
+    test_fn = unittest.expectedFailure(test_fn)

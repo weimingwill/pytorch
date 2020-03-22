@@ -11,7 +11,7 @@ from cpp_api_parity.utils import TorchNNFunctionalTestParams, CppArg, TORCH_NN_C
   compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
   has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test, \
   compute_cpp_args_construction_stmts_and_forward_arg_symbols, serialize_arg_dict_as_script_module, \
-  compute_arg_dict
+  compute_arg_dict, skip_test_fn_if_needed
 from cpp_api_parity import torch_nn_functionals
 
 # yf225 TODO: write better docs here
@@ -19,8 +19,6 @@ from cpp_api_parity import torch_nn_functionals
 # Step 1: Translate ctor args from Python layer to C++ layer
 # Step 2: Construct a C++ layer, run forward and backward on it, save all its params/buffers/gradients into a ScriptModule
 # Step 3: Load that ScriptModule into Python, and compare output/params/buffers/gradients with Python layer (forward and backward)
-
-# yf225 TODO: need to add `sample_functional` as sanity test
 
 # NN tests use double as the default dtype
 torch.set_default_dtype(torch.double)
@@ -109,11 +107,6 @@ def test_forward(unit_test_class, test_params):
   # Remove temporary folder that stores C++ outputs
   shutil.rmtree(test_params.cpp_tmp_folder)
 
-def test_torch_nn_functional_variant(unit_test_class, test_params):
-  test_forward(unit_test_class, test_params)
-
-
-# yf225 TODO: move to common utils?
 def compute_functional_name(test_params_dict):
   def camel_case_to_snake_case(camel_case_str):
     return re.sub(r'(?<!^)(?=[A-Z])', '_', camel_case_str).lower()
@@ -142,8 +135,8 @@ def compute_cpp_function_call(test_params_dict, arg_dict, functional_name):
 
 def process_test_params_for_functional(test_params_dict, device, test_instance_class):
   test_instance = test_instance_class(**test_params_dict)
-  # yf225 TODO: can we remove the magic number `5` here?
   functional_name = compute_functional_name(test_params_dict)
+  assert test_instance.get_name().startswith('test_')
   functional_variant_name = test_instance.get_name()[5:] + (('_' + device) if device != 'cpu' else '')
   arg_dict = compute_arg_dict(test_params_dict, test_instance)
   
@@ -160,7 +153,9 @@ def process_test_params_for_functional(test_params_dict, device, test_instance_c
 
 torch_nn_test_params_map = {}
 
-# yf225 TODO: move this to common utils?
+def test_torch_nn_functional_variant(unit_test_class, test_params):
+  test_forward(unit_test_class, test_params)
+
 def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, test_params_dicts, test_instance_class, devices):
   for test_params_dict in test_params_dicts:
     # Skip all `torch.nn` module tests, since they are handled by another test suite.
@@ -170,13 +165,13 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
     functional_name = compute_functional_name(test_params_dict)
 
     assert hasattr(torch.nn.functional, functional_name), \
-      "`torch.nn.functional` doesn't have function `{}` (discovered while processing {})".format(
+      "`torch.nn.functional` doesn't have function `{}`. (Discovered while processing {}.)".format(
         functional_name, test_params_dict)
 
     functional_full_name = 'F::' + functional_name
 
     assert functional_full_name in parity_table['torch::nn::functional'], \
-      "Please add `{}` entry to `torch::nn::functional` section of `test/cpp_api_parity/parity-tracker.md` (discovered while processing {})".format(
+      "Please add `{}` entry to `torch::nn::functional` section of `test/cpp_api_parity/parity-tracker.md`. (Discovered while processing {}.)".format(
         functional_full_name, test_params_dict)
 
     has_impl_parity, _ = parity_table['torch::nn::functional'][functional_full_name]
@@ -193,17 +188,11 @@ def add_torch_nn_functional_impl_parity_tests(parity_table, unit_test_class, tes
       def test_fn(self):
         test_torch_nn_functional_variant(unit_test_class=self, test_params=torch_nn_test_params_map[self._testMethodName])
 
-      test_fn = unittest.skipIf(not test_params_dict.get('test_cpp_api_parity', True), "Excluded from C++ API parity tests")(test_fn)
-
-      if device == 'cuda':
-        test_fn = unittest.skipIf(not TEST_CUDA, "CUDA unavailable")(test_fn)
-        test_fn = unittest.skipIf(not test_params_dict.get('test_cuda', True), "Excluded from CUDA tests")(test_fn)
-
-      # If `Implementation Parity` entry in parity table for this functional is `No`,
-      # we mark the test as expected failure.
-      if not has_impl_parity:
-        test_fn = unittest.expectedFailure(test_fn)
-
+      test_fn = skip_test_fn_if_needed(
+        test_fn=test_fn,
+        test_params_dict=test_params_dict,
+        test_cuda=TEST_CUDA,
+        has_impl_parity=has_impl_parity)
       add_test(unit_test_class, test_name, test_fn)
 
 
@@ -215,8 +204,6 @@ def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_ta
     test_instance_class=test_instance_class,
     devices=devices)
 
-# yf225 TODO: move to common utils?
-# yf225 TODO: we should check in a copy of the generated source code, and then run consistency test (compare old vs. newly generated)
 def generate_test_cpp_sources(test_params, template):
   cpp_args_construction_stmts, _ = compute_cpp_args_construction_stmts_and_forward_arg_symbols(test_params)
 
@@ -229,8 +216,6 @@ def generate_test_cpp_sources(test_params, template):
   return test_cpp_sources
 
 def build_cpp_tests(unit_test_class, print_cpp_source=False):
-  # Put all cpp source code into one file and compile together, in order to speed up the build
-  # yf225 TODO bonus point: check in the cpp source code for comparison
   if len(torch_nn_test_params_map) > 0:
     cpp_sources = TORCH_NN_COMMON_TEST_HARNESS
     functions = []

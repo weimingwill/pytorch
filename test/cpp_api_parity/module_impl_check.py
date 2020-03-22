@@ -11,7 +11,7 @@ from cpp_api_parity.utils import TorchNNModuleTestParams, CppArg, TORCH_NN_COMMO
   compile_cpp_code_inline, convert_to_list, set_python_tensors_requires_grad, move_python_tensors_to_device, \
   has_test, add_test, set_cpp_tensors_requires_grad, move_cpp_tensors_to_device, is_criterion_test, \
   compute_cpp_args_construction_stmts_and_forward_arg_symbols, serialize_arg_dict_as_script_module, \
-  compute_arg_dict
+  compute_arg_dict, skip_test_fn_if_needed
 from cpp_api_parity import torch_nn_modules
 
 # yf225 TODO: write better docs here
@@ -209,12 +209,14 @@ def add_torch_nn_module_impl_parity_tests(parity_table, unit_test_class, test_pa
     assert hasattr(torch.nn, module_name), \
       "`torch.nn` doesn't have module `{}`. ".format(module_name) + \
       "If you are adding a new test, please set `fullname` using format `ModuleName_desc`, " + \
-      "or set `module_name` using format `ModuleName`."
+      "or set `module_name` using format `ModuleName`. " + \
+      "(Discovered while processing {}.)".format(test_params_dict)
 
     module_full_name = 'torch::nn::' + module_name
     
     assert module_full_name in parity_table['torch::nn'], \
-      "Please add `{}` entry to `torch::nn` section of `test/cpp_api_parity/parity-tracker.md`.".format(module_full_name)
+      "Please add `{}` entry to `torch::nn` section of `test/cpp_api_parity/parity-tracker.md`. (Discovered while processing {}.)".format(
+        module_full_name, test_params_dict)
 
     has_impl_parity, _ = parity_table['torch::nn'][module_full_name]
 
@@ -230,17 +232,11 @@ def add_torch_nn_module_impl_parity_tests(parity_table, unit_test_class, test_pa
       def test_fn(self):
         test_torch_nn_module_variant(unit_test_class=self, test_params=torch_nn_test_params_map[self._testMethodName])
 
-      test_fn = unittest.skipIf(not test_params_dict.get('test_cpp_api_parity', True), "Excluded from C++ API parity tests")(test_fn)
-
-      if device == 'cuda':
-        test_fn = unittest.skipIf(not TEST_CUDA, "CUDA unavailable")(test_fn)
-        test_fn = unittest.skipIf(not test_params_dict.get('test_cuda', True), "Excluded from CUDA tests")(test_fn)
-
-      # If `Implementation Parity` entry in parity table for this module is `No`,
-      # we mark the test as expected failure.
-      if not has_impl_parity:
-        test_fn = unittest.expectedFailure(test_fn)
-
+      test_fn = skip_test_fn_if_needed(
+        test_fn=test_fn,
+        test_params_dict=test_params_dict,
+        test_cuda=TEST_CUDA,
+        has_impl_parity=has_impl_parity)
       add_test(unit_test_class, test_name, test_fn)
 
 
@@ -252,8 +248,6 @@ def add_tests(unit_test_class, test_params_dicts, test_instance_class, parity_ta
     test_instance_class=test_instance_class,
     devices=devices)
 
-# yf225 TODO: move to common utils?
-# yf225 TODO: we should check in a copy of the generated source code, and then run consistency test (compare old vs. newly generated)
 def generate_test_cpp_sources(test_params, template):
   device = test_params.device
 
@@ -275,8 +269,6 @@ def generate_test_cpp_sources(test_params, template):
   return test_cpp_sources
 
 def build_cpp_tests(unit_test_class, print_cpp_source=False):
-  # Put all cpp source code into one file and compile together, in order to speed up the build
-  # yf225 TODO bonus point: check in the cpp source code for comparison
   if len(torch_nn_test_params_map) > 0:
     cpp_sources = TORCH_NN_COMMON_TEST_HARNESS
     functions = []
